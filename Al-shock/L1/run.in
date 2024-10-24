@@ -1,0 +1,67 @@
+# ---------- Initialize Simulation ---------------------
+clear
+units metal
+dimension 3
+boundary p p p
+atom_style atomic
+atom_modify map array
+# ---------- define variables ---------------------
+variable stemperature equal 300 # temperature in kelvin
+variable alattice equal 4.057 # lattice constant (unit A for Al )
+variable myseed equal 12345 # the value seed for the velocity
+
+variable QL equal 1 #  distance scaling parameter
+variable time_step equal "0.001*v_QL" # time step in pico seconds
+
+
+variable Up1 equal 12 # shock velocity
+variable tdamp equal "v_time_step*50" # DO NOT CHANGE
+variable pdamp equal "v_time_step*300" # DO NOT CHANGE
+
+
+# ---------- Read Atoms ---------------------
+
+read_restart ../relax/restart_eq
+
+# ---------- Extending the atomistic configurations ----------------
+change_box all x scale ${QL} y scale ${QL} z scale ${QL} remap
+change_box all boundary p p s
+# ---------------pair----------------------------
+
+pair_style eam/alloy
+pair_coeff * * ../data/QCMD${QL}.eam.alloy Al
+
+# -----------------------compute-----------------------------------
+
+compute  peratom  all  stress/atom NULL
+compute myKE all ke/atom
+compute myPE all pe/atom
+
+# ------------------------shock-----------------------------------
+
+shell mkdir shock
+shell cd shock
+
+timestep ${time_step}
+reset_timestep 0
+
+thermo 100
+thermo_style custom step  lx ly lz etotal
+
+fix 1 all nve
+
+variable zmin1 equal zlo
+fix walls all wall/piston zlo pos ${zmin1} vel ${Up1} units box
+
+compute cc1 all chunk/atom bin/1d z lower 0.01 units reduced
+fix bin1 all ave/chunk 500 1 500 cc1 vx vy vz c_peratom[1] c_peratom[2] c_peratom[3] temp norm all file BIN.out
+#Use cfg for AtomEye
+
+dump 2 all cfg 2000 dump._*.cfg.gz mass type xs ys zs vx vy vz c_myPE c_myKE id
+dump_modify 2 element Al
+
+
+run 20000
+unfix walls
+
+run 80000 every 10000 "write_restart restart_shock.*"

@@ -1,0 +1,53 @@
+clear 
+units metal 
+dimension 3 
+boundary p p p
+atom_style atomic 
+atom_modify map array
+# ---------- define variables --------------------
+variable stemperature equal 300 # temperature in kelvin 
+variable epercentage equal -0.4 # 压缩应变
+variable epercentage1 equal 0.22 # 拉伸应变
+variable myseed equal 12345 # the value seed for the velocity 
+variable atomrate equal 100 # the rate in timestep that atoms are dump as CFG 
+variable time_step equal 0.001 # time step in pico seconds 
+variable time_eq equal 1000 # time steps for the equlibration part
+
+variable tdamp equal "v_time_step*50" # DO NOT CHANGE 
+variable pdamp equal "v_time_step*250" # DO NOT CHANGE
+
+variable R equal -0.001 #  压缩应变率 1/ps 
+variable R1 equal 0.2 #  拉伸应变率 1/ps 
+
+variable time_run equal "(v_epercentage/v_R)/v_time_step"
+variable time_run1 equal "(v_epercentage1/v_R1)/v_time_step"
+
+timestep ${time_step} # DO NOT CHANGE
+# ---------- Create Atoms --------------------
+
+lattice bcc 3.304 origin 0.0 0.0 0.0 orient x 1 0 0 orient y 0 1 0 orient z 0 0 1 
+region box block 0 40 0 40 0 40 units lattice 
+create_box 1 box 
+create_atoms 1 box
+# ---------- Define Interatomic Potential --------------------
+pair_style eam/alloy
+pair_coeff * * QCMD1.eam.alloy Ta
+# ---------- Define Settings ----------------------------------
+
+compute myKE all ke/atom
+compute pe1 all pe
+
+reset_timestep 0
+
+thermo 10
+thermo_style custom step pxx pyy pzz lx ly lz temp
+
+velocity all create ${stemperature} ${myseed} mom yes rot no
+fix equilibration all npt temp ${stemperature} ${stemperature} ${tdamp} iso 0 0 ${pdamp} drag 1
+run 10000
+unfix equilibration
+# Store final cell length for strain calculations
+variable tmp equal "lx"
+variable L0 equal ${tmp}
+print "Initial Length, L0: ${L0}"
+

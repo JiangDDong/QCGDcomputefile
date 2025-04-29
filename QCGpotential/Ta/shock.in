@@ -1,0 +1,68 @@
+# ---------- Initialize Simulation ---------------------
+clear
+units metal
+dimension 3
+boundary p p p
+atom_style atomic
+atom_modify map array
+# ---------- define variables ---------------------
+variable stemperature equal 300 # temperature in kelvin
+variable alattice equal 4.057 # lattice constant (unit A for Al )
+variable myseed equal 12345 # the value seed for the velocity
+
+variable QL equal 1
+variable time_step equal "0.001" # time step in pico seconds
+
+
+variable Up1 equal 10
+timestep ${time_step}
+
+
+# ---------- Create Atoms ---------------------
+
+
+read_restart ./restart_eq
+
+change_box all x scale ${QL} y scale ${QL} z scale ${QL} remap
+change_box all boundary p p s
+# ---------------pair----------------------------
+
+pair_style eam/alloy
+pair_coeff * * ../data/QCMD1.eam.alloy Al Al
+
+# -----------------------compute-----------------------------------
+
+compute  peratom  all  stress/atom NULL
+compute myKE all ke/atom
+compute myPE all pe/atom
+
+# ------------------------shock-----------------------------------
+
+lattice fcc 4.065 origin 0.0 0.0 0.0 orient x 1 0 0 orient y 0 1 0 orient z 0 0 1
+
+shell mkdir run
+shell cd run
+
+timestep ${time_step}
+
+fix 1 all nve
+
+run 100
+reset_timestep 0
+
+variable zmin1 equal zlo
+fix walls all wall/piston zlo pos ${zmin1} vel ${Up1} units box
+
+compute vzz freesufe reduce ave vz
+compute cc1 all chunk/atom bin/1d z lower 5
+variable eq1 equal "step"
+variable eq2 equal "c_vzz"
+
+fix shock freesufe print 400 "${eq1} ${eq2}  " file run.sufe.out screen no
+fix bin1 all ave/chunk 400 1 400 cc1 vx vy vz c_peratom[1] c_peratom[2] c_peratom[3]  temp norm all file BIN.out
+#Use cfg for AtomEye
+
+dump 2 all cfg 4000 dump._*.cfg.gz mass type xs ys zs vx vy vz id
+run 48000
+#unfix walls
+#run 120000

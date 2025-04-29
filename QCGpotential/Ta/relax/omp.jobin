@@ -1,0 +1,11 @@
+#!/bin/bash
+
+##单节点并行/串行计算
+#SBATCH -J Tarelax
+#SBATCH -o job.%j.out
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=240  ###此处为并行核数，无需并行改为1
+
+##运行命令
+mpirun -np $SLURM_NPROCS /share/apps/lammps-23Jun2022/bulid/lmp < in1.in 
+

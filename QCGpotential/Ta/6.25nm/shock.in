@@ -1,0 +1,115 @@
+# ---------- Initialize Simulation ---------------------
+clear
+units metal
+dimension 3
+boundary p p p
+atom_style atomic
+atom_modify map array
+# ---------- define variables ---------------------
+variable stemperature equal 300 # temperature in kelvin
+variable alattice equal 4.057 # lattice constant (unit A for Al )
+variable myseed equal 12345 # the value seed for the velocity
+
+
+variable QL equal 1
+variable time_step equal "0.001" # time step in pico seconds
+
+
+variable tdamp equal "v_time_step*40" # DO NOT CHANGE
+variable pdamp equal "v_time_step*200" # DO NOT CHANGE
+
+
+
+variable Up1 equal 7.5
+timestep ${time_step}
+
+
+# ---------- Create Atoms ---------------------
+
+
+read_restart ../relax/restart_eq
+
+# ---------------pair----------------------------
+
+pair_style eam/alloy
+pair_coeff * * ./QCMD1.eam.alloy Ta
+
+# ----------------------relax---------------------
+
+
+thermo 100
+thermo_style custom step  lx ly lz pxx pyy pzz temp
+
+
+region ball1 sphere 325 325 843.75 31.25 units box
+delete_atoms region ball1 compress yes
+
+region ball2 sphere 325 325 843.75 50 units box
+group relaxball region ball2
+
+region ball3 sphere 325 325 843.75 50 side out units box
+group relaxball1 region ball3
+
+region posion block INF INF INF INF INF 10 units box
+group gogogo region posion
+
+region end block INF INF INF INF 1840 INF units box
+group end region end
+
+region bulk block INF INF INF INF 10 1840 units box
+group bulk region bulk
+
+#set group gogogo vx 0.0 vy 0.0 vz 0.0
+#fix walls gogogo setforce 0.0 0.0 0.0
+#set group end vx 0.0 vy 0.0 vz 0.0
+#fix walls end setforce 0.0 0.0 0.0
+
+fix 1 relaxball1 nve
+fix 2 relaxball nvt temp ${stemperature} ${stemperature} ${tdamp}
+run 2000
+velocity all create ${stemperature} ${myseed} rot yes dist gaussian
+unfix 1
+unfix 2
+
+# -----------------------compute----------------------------------
+
+compute  peratom  all  stress/atom NULL
+compute myKE all ke/atom
+compute myPE all pe/atom
+
+# ------------------------shock-----------------------------------
+
+lattice fcc 4.065 origin 0.0 0.0 0.0 orient x 1 0 0 orient y 0 1 0 orient z 0 0 1
+
+shell mkdir run
+shell cd run
+
+timestep ${time_step}
+
+fix 1 all nve
+
+run 1000
+
+reset_timestep 0
+
+#variable zmin1 equal zlo
+#fix walls all wall/piston zlo pos ${zmin1} vel ${Up1} units box
+
+
+thermo 100
+thermo_style custom step  lx ly lz pxx pyy pzz temp
+
+set group gogogo vx 0.0 vy 0.0 vz ${Up1}
+fix walls gogogo setforce 0.0 0.0 0.0
+
+compute cc1 all chunk/atom bin/1d z lower 5
+
+fix bin1 all ave/chunk 400 1 400 cc1 vx vy vz c_peratom[1] c_peratom[2] c_peratom[3]  temp norm all file BIN.out
+#Use cfg for AtomEye
+
+dump 2 all cfg 1250 dump._*.cfg.gz mass type xs ys zs vx vy vz id
+run 18750
+delete_atoms group gogogo compress no
+run 11250
+#unfix walls
+#run 120000

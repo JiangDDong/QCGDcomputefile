@@ -1,0 +1,85 @@
+# ---------- Initialize Simulation ---------------------
+clear
+units metal
+dimension 3
+boundary p p p
+atom_style atomic
+atom_modify map array
+# ---------- define variables ---------------------
+variable stemperature equal 300 # temperature in kelvin
+variable alattice equal 4.057 # lattice constant (unit A for Al )
+variable myseed equal 12345 # the value seed for the velocity
+variable xmax equal 160 # size in the x-direction
+variable ymax equal 160 # size in the y-direction
+variable zmax equal 1200 # size in the z-direction
+
+variable QL equal 1
+variable time_step equal "0.001*v_QL" # time step in pico seconds
+
+variable Up1 equal 10
+variable tdamp equal "v_time_step*40" # DO NOT CHANGE
+variable pdamp equal "v_time_step*200" # DO NOT CHANGE
+
+
+
+# ---------- Create Atoms ---------------------
+
+lattice fcc ${alattice} origin 0.0 0.0 0.0 orient x 1 0 0 orient y 0 1 0 orient z 0 0 1
+
+# define size of the simulation box
+
+
+# define atoms in a small region
+read_data ./single.lmp
+
+# define a group for the atom_box region
+
+
+
+#---------- Define Interatomic Potential ---------------------
+
+pair_style eam/alloy
+pair_coeff * * ./QCMD${QL}.eam.alloy Ta
+
+change_box all x scale 1.000825893 y scale 1.000825893 z scale 1.000825893 remap
+
+# ------------ Equilibrate ---------------------------------------
+timestep 0.001
+
+
+# Now, assign the initial velocities using Maxwell-Boltzmann distribution
+velocity all create ${stemperature} ${myseed} rot yes dist gaussian
+
+fix equilibration all npt temp ${stemperature} ${stemperature} ${tdamp} iso 0 0 ${pdamp} drag 1
+variable eq1 equal "step"
+variable eq2 equal "lz"
+variable eq3 equal "etotal"
+variable eq4 equal "c_tempAl"
+#variable eq5 equal "c_tempCu"
+compute  tempAl all temp 
+#compute  tempCu Cu temp 
+fix output1 all print 100 "${eq1} ${eq2} ${eq3} ${eq4} " file e.run.out screen no
+thermo 100
+thermo_style custom step  lx ly lz pxx pyy pzz etotal
+#dump 1 all cfg 2000 dump.eq._*.cfg mass type xs ys zs
+run 5000
+
+#undump 1
+unfix equilibration
+unfix output1
+shell cd ..
+
+compute myKE all ke/atom
+#compute myCOM all com
+compute  peratom  all  stress/atom NULL
+#compute csp all centro/atom fcc
+# -------------- Shock -------------------------------------------
+change_box all boundary p p m
+run 0
+change_box all boundary p p s
+
+fix 1 all nve
+run 1000
+reset_timestep 0
+
+write_restart restart_eq

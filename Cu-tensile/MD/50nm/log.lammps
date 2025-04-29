@@ -1,0 +1,202 @@
+LAMMPS (23 Jun 2022 - Update 1)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:98)
+  using 1 OpenMP thread(s) per MPI task
+clear
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:98)
+  using 1 OpenMP thread(s) per MPI task
+units metal
+dimension 3
+boundary p p p
+atom_style atomic
+atom_modify map array
+# ---------- define variables --------------------
+variable stemperature equal 300 # temperature in kelvin
+variable epercentage equal 0.1 # 应变
+
+variable QL equal 1
+
+variable time_step equal "0.005*v_QL" # time step in pico seconds
+
+variable tdamp equal "v_time_step*50" # DO NOT CHANGE
+variable pdamp equal "v_time_step*200" # DO NOT CHANGE
+
+
+
+variable R equal 0.001 #  拉伸应变率 1/ps
+variable R1 equal -1.0*v_R/2.0
+
+
+variable time_run equal "(v_epercentage/v_R)/v_time_step"
+
+timestep ${time_step} # DO NOT CHANGE
+timestep 0.005 
+# ---------- Create Atoms --------------------
+
+
+read_restart ./relax/restart.eq
+Reading restart file ...
+  restart file = 23 Jun 2022, LAMMPS = 23 Jun 2022
+  restoring atom style atomic from restart
+  orthogonal box = (-1.9963578 -1.9963578 -1.9963578) to (501.99636 501.99636 501.99636)
+  4 by 6 by 5 MPI processor grid
+  pair style eam/alloy stores no restart info
+  10654492 atoms
+  read_restart CPU = 7.810 seconds
+
+change_box all x scale ${QL} y scale ${QL} z scale ${QL} remap
+change_box all x scale 1 y scale ${QL} z scale ${QL} remap
+change_box all x scale 1 y scale 1 z scale ${QL} remap
+change_box all x scale 1 y scale 1 z scale 1 remap
+Changing box ...
+  orthogonal box = (-1.9963578 -1.9963578 -1.9963578) to (501.99636 501.99636 501.99636)
+  orthogonal box = (-1.9963578 -1.9963578 -1.9963578) to (501.99636 501.99636 501.99636)
+  orthogonal box = (-1.9963578 -1.9963578 -1.9963578) to (501.99636 501.99636 501.99636)
+
+# ---------- Define Interatomic Potential --------------------
+pair_style eam/alloy
+pair_coeff * * QCMD${QL}.eam.alloy Cu
+pair_coeff * * QCMD1.eam.alloy Cu
+Reading eam/alloy potential file QCMD1.eam.alloy with DATE: 2007-10-12
+
+
+# ---------- Define Settings ----------------------------------
+
+compute myKE all ke/atom
+compute myPE all pe/atom
+
+# ---------- Equilibration ---------------------------------------
+
+reset_timestep 0
+
+variable tmp equal "lx"
+variable L0 equal ${tmp}
+variable L0 equal 503.992715543016
+print "Initial Length, L0: ${L0}"
+Initial Length, L0: 503.992715543016
+# ---------- Deformation ---------------------------------
+shell mkdir run
+shell cd run
+# pxx,pyy,pzz are in GPa
+reset_timestep 0
+
+timestep ${time_step} # DO NOT CHANGE
+timestep 0.005 
+
+fix 1 all npt temp ${stemperature} ${stemperature} ${tdamp} y 0 0 ${pdamp} z 0 0 ${pdamp}
+fix 1 all npt temp 300 ${stemperature} ${tdamp} y 0 0 ${pdamp} z 0 0 ${pdamp}
+fix 1 all npt temp 300 300 ${tdamp} y 0 0 ${pdamp} z 0 0 ${pdamp}
+fix 1 all npt temp 300 300 0.25 y 0 0 ${pdamp} z 0 0 ${pdamp}
+fix 1 all npt temp 300 300 0.25 y 0 0 1 z 0 0 ${pdamp}
+fix 1 all npt temp 300 300 0.25 y 0 0 1 z 0 0 1
+#fix 1 all nve
+
+fix 2 all deform 1 x trate ${R} units box remap x
+fix 2 all deform 1 x trate 0.001 units box remap x
+
+variable tstep equal "step"
+variable mypxx equal "-pxx/10000"
+variable mypyy equal "-pyy/10000"
+variable mypzz equal "-pzz/10000"
+variable mpxx equal "pxx"
+variable mytemp equal "temp"
+variable ll equal "lx"
+variable ET equal "etotal"
+variable strain equal "(v_ll - v_L0)/v_L0"
+fix def1 all print 100 "${tstep} ${mypxx} ${mypyy} ${mypzz} ${mytemp} ${strain} ${ET}" file stress1.${stemperature}K.${epercentage}e.out screen no
+fix def1 all print 100 "${tstep} ${mypxx} ${mypyy} ${mypzz} ${mytemp} ${strain} ${ET}" file stress1.300K.${epercentage}e.out screen no
+fix def1 all print 100 "${tstep} ${mypxx} ${mypyy} ${mypzz} ${mytemp} ${strain} ${ET}" file stress1.300K.0.1e.out screen no
+
+
+# Use cfg for AtomEye
+dump 1 all cfg 2000 dump._*.cfg.gz mass type xs ys zs c_myPE c_myKE vx vy vz id
+dump_modify 1 element Cu
+# Display thermo
+thermo 500
+thermo_style custom step pxx pyy pzz lx ly lz temp etotal
+run ${time_run}
+run 20000
+Unused restart file global fix info:
+  fix style: npt, fix ID: equilibration
+Neighbor list info ...
+  update every 1 steps, delay 10 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 7.50679
+  ghost atom cutoff = 7.50679
+  binsize = 3.753395, bins = 135 135 135
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair eam/alloy, perpetual
+      attributes: half, newton on
+      pair build: half/bin/atomonly/newton
+      stencil: half/bin/3d
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 114.6 | 115.4 | 115.5 Mbytes
+   Step          Pxx            Pyy            Pzz             Lx             Ly             Lz            Temp          TotEng    
+         0  -37.846242     -4.8740563      49.7331        503.99272      503.99272      503.99272      299.94895     -36780654     
+       500  -3047.3978      3.0181867     -9.7807067      505.25427      503.48278      503.49908      300.18178     -36788007     
+      1000  -5614.4511      9.4966321     -0.88997307     506.51899      503.0134       503.03368      299.94414     -36786773     
+      1500  -8014.6324     -18.527887      17.599481      507.78687      502.55703      502.55366      300.12192     -36783973     
+      2000  -10291.113     -0.34773446     4.2839431      509.05793      502.05345      502.09986      299.96969     -36781703     
+      2500  -12492.382     -11.170444     -0.094287886    510.33216      501.56272      501.64132      299.97575     -36778179     
+      3000  -14573.745      3.4680589      2.0465112      511.60959      501.03736      501.19916      299.91328     -36774800     
+      3500  -16580.697     -5.8344901      3.1984236      512.89021      500.49936      500.76805      299.94798     -36770949     
+      4000  -18508.898     -24.791126      4.3698901      514.17404      499.97498      500.31966      300.1112      -36766654     
+      4500  -20269.181     -1.7142511     -13.90008       515.46109      499.41971      499.87871      299.97097     -36762838     
+      5000  -21871.183      11.707371     -23.301947      516.75135      498.88842      499.40023      299.96545     -36758572     
+      5500  -23352.032      18.443156      0.50930151     518.04485      498.3519       498.91163      299.87763     -36754189     
+      6000  -24653.166     -12.629129      3.6053443      519.34158      497.81574      498.4042       300.04877     -36749843     
+      6500  -25675.455     -14.816321      7.7688483      520.64156      497.23633      497.90645      300.03461     -36745534     
+      7000  -26372.852     -13.354196      5.3108729      521.94479      496.60871      497.4118       300.16634     -36741700     
+      7500  -26675.858      5.4860039      0.48606402     523.25128      495.93897      496.90605      300.1343      -36738597     
+      8000  -26557.221      11.226695      4.0714808      524.56105      495.25044      496.36157      300.08061     -36736243     
+      8500  -26212.121      3.8753331     -4.583157       525.87409      494.5337       495.81156      300.221       -36734616     
+      9000  -25572.244     -23.172071      6.7954764      527.19042      493.75387      495.28388      300.17681     -36733952     
+      9500  -24792.896     -7.1018545      7.1492897      528.51005      492.95092      494.75789      300.22825     -36733501     
+     10000  -24185.932      3.8309345     -7.4563939      529.83297      492.15804      494.24941      300.23905     -36732737     
+     10500  -23512.337     -36.728158      4.598454       531.15921      491.42553      493.67438      300.20683     -36732052     
+     11000  -22823.368     -16.770007     -1.6643305      532.48877      490.68021      493.11065      300.06562     -36731441     
+     11500  -22193.053     -5.7430347     -21.979383      533.82166      489.94576      492.54007      300.1539      -36730969     
+     12000  -21746.239     -5.9249814      9.555807       535.15788      489.24505      491.96378      300.07894     -36730235     
+     12500  -21404.094      7.0251349     -5.53173        536.49745      488.57056      491.37735      300.2054      -36729534     
+     13000  -21334.398     -10.949399      0.029970951    537.84037      487.93624      490.79252      300.15789     -36728477     
+     13500  -21259.578     -3.6131728     -0.99031992     539.18666      487.28829      490.22058      300.2067      -36727552     
+     14000  -20869.811     -2.682176      -3.637519       540.53631      486.63537      489.60766      300.10032     -36727470     
+     14500  -20576.388     -13.054672      10.626989      541.88934      486.01989      488.9729       300.21665     -36727028     
+     15000  -20366.169     -6.9562037      13.755275      543.24576      485.38818      488.36936      300.06498     -36726702     
+     15500  -20407.411     -17.749919      1.671252       544.60557      484.75612      487.80361      300.11844     -36725724     
+     16000  -20489.381      6.3363536     -1.3597906      545.96879      484.15487      487.21         300.122       -36724697     
+     16500  -20591.568     -10.665015      0.33839583     547.33542      483.5594       486.6152       300.12366     -36724077     
+     17000  -20565.897     -19.073687      1.5937844      548.70547      482.90479      486.07051      300.16471     -36722891     
+     17500  -20404.249     -18.018061     -7.1409381      550.07895      482.2599       485.49203      300.18534     -36722337     
+     18000  -20059.123     -10.144031     -4.0821146      551.45587      481.56555      484.94483      300.10051     -36721694     
+     18500  -19843.635     -29.251325      2.3280201      552.83623      480.93934      484.34256      300.13668     -36721297     
+     19000  -19516.09      -12.728444     -12.360227      554.22005      480.34462      483.69854      300.10736     -36720868     
+     19500  -19186.959     -13.903546      4.3835443      555.60734      479.70876      483.09264      300.1946      -36720592     
+     20000  -19026.339     -28.04216      -6.7579308      556.99809      479.10196      482.48825      300.19626     -36720153     
+Loop time of 19043 on 120 procs for 20000 steps with 10654492 atoms
+
+Performance: 0.454 ns/day, 52.897 hours/ns, 1.050 timesteps/s
+97.4% CPU use with 120 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 8517       | 9579       | 12291      | 884.1 | 50.30
+Neigh   | 215.38     | 254.93     | 351.07     | 198.0 |  1.34
+Comm    | 2658.1     | 5683.4     | 6978.9     |1286.8 | 29.85
+Output  | 1171.1     | 1171.1     | 1171.2     |   0.0 |  6.15
+Modify  | 1772.1     | 2041.8     | 2454.4     | 392.8 | 10.72
+Other   |            | 312.8      |            |       |  1.64
+
+Nlocal:        88787.4 ave       89888 max       87835 min
+Histogram: 5 1 13 17 35 28 11 7 2 1
+Nghost:        46239.3 ave       46797 max       45298 min
+Histogram: 1 0 0 6 8 29 47 19 5 5
+Neighs:    6.35061e+06 ave 6.53416e+06 max 6.22975e+06 min
+Histogram: 3 5 22 27 39 16 6 0 1 1
+
+Total # of neighbors = 7.6207264e+08
+Ave neighs/atom = 71.525948
+Neighbor list builds = 887
+Dangerous builds = 0
+#run 2000
+Total wall time: 5:19:22

@@ -1,0 +1,84 @@
+LAMMPS (23 Jun 2022 - Update 1)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:98)
+  using 1 OpenMP thread(s) per MPI task
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:98)
+  using 1 OpenMP thread(s) per MPI task
+Reading restart file ...
+  restart file = 23 Jun 2022, LAMMPS = 23 Jun 2022
+WARNING: Restart file used different # of processors: 120 vs. 60 (src/read_restart.cpp:654)
+  restoring atom style atomic from restart
+  orthogonal box = (-1.9963578 -1.9963578 -1.9963578) to (501.99636 501.99636 501.99636)
+  4 by 3 by 5 MPI processor grid
+  pair style eam/alloy stores no restart info
+  10654492 atoms
+  read_restart CPU = 3.938 seconds
+Changing box ...
+  orthogonal box = (-1765.9709 -1.9963578 -1.9963578) to (2265.9709 501.99636 501.99636)
+  orthogonal box = (-1765.9709 -1765.9709 -1.9963578) to (2265.9709 2265.9709 501.99636)
+  orthogonal box = (-1765.9709 -1765.9709 -1765.9709) to (2265.9709 2265.9709 2265.9709)
+Reading eam/alloy potential file QCMD8.eam.alloy with DATE: 2007-10-12
+Initial Length, L0: 4031.94172434413
+Unused restart file global fix info:
+  fix style: npt, fix ID: equilibration
+Neighbor list info ...
+  update every 1 steps, delay 10 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 46.05432
+  ghost atom cutoff = 46.05432
+  binsize = 23.02716, bins = 176 176 176
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair eam/alloy, perpetual
+      attributes: half, newton on
+      pair build: half/bin/atomonly/newton
+      stencil: half/bin/3d
+      bin: standard
+Setting up Verlet run ...
+  Unit style    : metal
+  Current step  : 0
+  Time step     : 0.04
+Per MPI rank memory allocation (min/avg/max) = 150.7 | 151.8 | 151.8 Mbytes
+   Step          Pxx            Pyy            Pzz             Lx             Ly             Lz            Temp          TotEng    
+         0  -0.073918441   -0.0095196412   0.09713496     4031.9417      4031.9417      4031.9417      299.94895     -36780654     
+       500  -43.73468      -0.5502227     -0.56040687     4113.3924      4004.5437      4002.7247      300.17944     -36761849     
+      1000  -74.583673     -0.75018226    -0.72850338     4196.4884      3974.3929      3972.9743      300.35864     -36711391     
+      1500  -90.905804     -1.0808678     -0.94688113     4281.2631      3940.1803      3941.722       302.76297     -36651613     
+      2000  -83.419247     -1.7868153     -1.5420954      4367.7503      3898.1854      3905.5576      310.19023     -36610644     
+      2500  -58.021251     -1.9551443     -1.8917837      4455.9847      3850.9251      3862.4174      310.64208     -36617908     
+Loop time of 3449.85 on 60 procs for 2500 steps with 10654492 atoms
+
+Performance: 2.504 ns/day, 9.583 hours/ns, 0.725 timesteps/s
+97.3% CPU use with 60 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 1542       | 1841.4     | 2456.7     | 487.3 | 53.38
+Neigh   | 64.477     | 82.439     | 124.01     | 142.9 |  2.39
+Comm    | 422.19     | 1129.5     | 1473.4     | 714.3 | 32.74
+Output  | 105.47     | 105.47     | 105.49     |   0.0 |  3.06
+Modify  | 249.01     | 275.5      | 326.23     | 110.0 |  7.99
+Other   |            | 15.48      |            |       |  0.45
+
+Nlocal:         177575 ave      179588 max      175772 min
+Histogram: 2 2 6 13 13 8 5 10 0 1
+Nghost:        53045.8 ave       53552 max       52637 min
+Histogram: 4 4 5 14 10 8 9 4 0 2
+Neighs:    5.73187e+06 ave 5.88689e+06 max 5.58862e+06 min
+Histogram: 2 2 5 19 3 15 3 6 4 1
+
+Total # of neighbors = 3.4391223e+08
+Ave neighs/atom = 32.278614
+Neighbor list builds = 250
+Dangerous builds = 250
+Total wall time: 0:59:30
+--------------------------------------------------------------------------
+A system call failed during shared memory initialization that should
+not have.  It is likely that your MPI job will now either abort or
+experience performance degradation.
+
+  Local host:  node1
+  System call: unlink(2) /dev/shm/vader_segment.node1.1000.12490001.45
+  Error:       No such file or directory (errno 2)
+--------------------------------------------------------------------------
+[node1:3168529] 59 more processes have sent help message help-opal-shmem-mmap.txt / sys call fail
+[node1:3168529] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
